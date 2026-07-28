@@ -14,3 +14,8 @@ def create_task(
     db: Session = Depends(get_db)
 ):
     return controller.create_task(body, db)
+
+
+@task_routes.get("/all_tasks")
+def get_all_tasks(db = Depends(get_db)):
+    return controller.get_tasks(db)
