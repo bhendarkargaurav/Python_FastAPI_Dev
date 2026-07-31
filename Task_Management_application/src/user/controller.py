@@ -1,14 +1,20 @@
 from fastapi import HTTPException
-from src.user.dtos import UserSchema
+from src.user.dtos import UserSchema, LoginSchema
 from sqlalchemy.orm import Session
 from src.user.models import UserModel
 from pwdlib import PasswordHash
+from datetime import datetime, timedelta
+import jwt
+from src.utils.settings import settings
 
 
 Password_hash = PasswordHash.recommended()
 
 def get_password_hash(password):
     return Password_hash.hash(password)
+
+def verify_password(plain_password, hashed_password):
+    return Password_hash.verify(plain_password, hashed_password)
 
 def register(body:UserSchema, db:Session):
     is_user = db.query(UserModel).filter(UserModel.username == body.username).first()
@@ -33,3 +39,22 @@ def register(body:UserSchema, db:Session):
     db.refresh(new_user)
     
     return new_user
+
+
+
+
+def login_user(body, db: Session):
+    user = db.query(UserModel).filter(UserModel.username == body.username).first()
+    if not user:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIRIZED, DETAIL="you enter wron username !..")
+
+
+    if not verify_password(body.password, user.hash_password):
+         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIRIZED, DETAIL="you enter wrong password !..")
+
+    exp_time = datetime.now() + timedelta(minutes=settings.EXP_TIME)
+
+    token = jwt.encode({"_id":user.id, "exp":exp_time}, settings.SECRET_KEY, settings.ALGORITHM)
+
+
+    return {"token":token}
